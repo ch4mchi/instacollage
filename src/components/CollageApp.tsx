@@ -7,7 +7,8 @@ import { LayoutSelector } from './LayoutSelector';
 import { FrameSettings } from './FrameSettings';
 import { CollageCanvas } from './CollageCanvas';
 import { ExportControls } from './ExportControls';
-import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS } from '@/types/collage';
+import { ImageAdjustmentPanel } from './ImageAdjustmentPanel';
+import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS, ImageAdjustment } from '@/types/collage';
 
 export function CollageApp() {
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -25,6 +26,26 @@ export function CollageApp() {
 
   const handleImagesReorder = useCallback((reorderedImages: UploadedImage[]) => {
     setImages(reorderedImages);
+  }, []);
+
+  const handleImageAdjustmentChange = useCallback((imageId: string, adjustment: ImageAdjustment) => {
+    setImages(prevImages => 
+      prevImages.map(img => 
+        img.id === imageId 
+          ? { ...img, adjustment }
+          : img
+      )
+    );
+  }, []);
+
+  const handleResetAdjustment = useCallback((imageId: string) => {
+    setImages(prevImages => 
+      prevImages.map(img => 
+        img.id === imageId 
+          ? { ...img, adjustment: undefined }
+          : img
+      )
+    );
   }, []);
 
   const maxImagesForLayout = LAYOUT_CONFIGS[selectedLayout].cells;
@@ -86,6 +107,13 @@ export function CollageApp() {
               onAspectRatioChange={setAspectRatio}
               onSpacingChange={setSpacing}
             />
+
+            {images.length > 0 && (
+              <ImageAdjustmentPanel
+                images={images}
+                onResetAdjustment={handleResetAdjustment}
+              />
+            )}
             
             {/* Export Controls - shown here on desktop */}
             <div className="hidden lg:block">
@@ -107,6 +135,7 @@ export function CollageApp() {
               frameWidth={frameWidth}
               aspectRatio={aspectRatio}
               spacing={spacing}
+              onImageAdjustmentChange={handleImageAdjustmentChange}
             />
           </div>
 

@@ -1,9 +1,16 @@
+export interface ImageAdjustment {
+  offsetX: number; // Horizontal offset percentage (-100 to 100)
+  offsetY: number; // Vertical offset percentage (-100 to 100)
+  zoom: number; // Zoom level (0.5 to 2.0)
+}
+
 export interface UploadedImage {
   id: string;
   file: File;
   url: string;
   name: string;
   size: number;
+  adjustment?: ImageAdjustment;
 }
 
 export type CollageLayout = '1x1' | '1x2' | '2x1' | '2x2' | '3x1' | '1x3';

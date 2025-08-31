@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
-import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS, ASPECT_RATIOS } from '@/types/collage';
+import React, { useEffect, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
+import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS, ASPECT_RATIOS, ImageAdjustment } from '@/types/collage';
 
 interface CollageCanvasProps {
   images: UploadedImage[];
@@ -9,18 +9,131 @@ interface CollageCanvasProps {
   frameWidth: number;
   aspectRatio: AspectRatio;
   spacing: SpacingSettings;
+  onImageAdjustmentChange?: (imageId: string, adjustment: ImageAdjustment) => void;
 }
 
 export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
-  ({ images, layout, frameWidth, aspectRatio, spacing }, ref) => {
+  ({ images, layout, frameWidth, aspectRatio, spacing, onImageAdjustmentChange }, ref) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragImageIndex, setDragImageIndex] = useState<number | null>(null);
+    const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+    const [hoveredImageIndex, setHoveredImageIndex] = useState<number | null>(null);
+    const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
 
     useImperativeHandle(ref, () => canvasRef.current!);
 
     const frameHeight = frameWidth / ASPECT_RATIOS[aspectRatio];
     const config = LAYOUT_CONFIGS[layout];
 
+    const drawImageWithAdjustment = useCallback((
+      ctx: CanvasRenderingContext2D,
+      img: HTMLImageElement,
+      cellX: number,
+      cellY: number,
+      cellWidth: number,
+      cellHeight: number,
+      adjustment: ImageAdjustment = { offsetX: 0, offsetY: 0, zoom: 1 }
+    ) => {
+      // Calculate image dimensions with zoom
+      const imgAspectRatio = img.width / img.height;
+      const cellAspectRatio = cellWidth / cellHeight;
+      
+      let baseWidth, baseHeight;
+      
+      // Calculate base size to fill the cell
+      if (imgAspectRatio > cellAspectRatio) {
+        baseHeight = cellHeight;
+        baseWidth = baseHeight * imgAspectRatio;
+      } else {
+        baseWidth = cellWidth;
+        baseHeight = baseWidth / imgAspectRatio;
+      }
+      
+      // Apply zoom (constrained so image always covers the cell)
+      const minZoom = Math.max(cellWidth / baseWidth, cellHeight / baseHeight);
+      const constrainedZoom = Math.max(adjustment.zoom, minZoom);
+      
+      const scaledWidth = baseWidth * constrainedZoom;
+      const scaledHeight = baseHeight * constrainedZoom;
+      
+      // Calculate position with offset
+      const maxOffsetX = (scaledWidth - cellWidth) / 2;
+      const maxOffsetY = (scaledHeight - cellHeight) / 2;
+      
+      const constrainedOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, (adjustment.offsetX / 100) * maxOffsetX));
+      const constrainedOffsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, (adjustment.offsetY / 100) * maxOffsetY));
+      
+      const x = cellX + (cellWidth - scaledWidth) / 2 + constrainedOffsetX;
+      const y = cellY + (cellHeight - scaledHeight) / 2 + constrainedOffsetY;
+      
+      // Clip to cell boundaries
+      ctx.save();
+      ctx.rect(cellX, cellY, cellWidth, cellHeight);
+      ctx.clip();
+      
+      // Draw image
+      ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+      ctx.restore();
+      
+      return { scaledWidth, scaledHeight, x, y };
+    }, []);
+
+    const drawHoverOverlay = useCallback((
+      ctx: CanvasRenderingContext2D,
+      cellX: number,
+      cellY: number,
+      cellWidth: number,
+      cellHeight: number
+    ) => {
+      ctx.save();
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.1)'; // Blue overlay
+      ctx.fillRect(cellX, cellY, cellWidth, cellHeight);
+      
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cellX, cellY, cellWidth, cellHeight);
+      
+      ctx.restore();
+    }, []);
+
+    // Preload images when they change
     useEffect(() => {
+      const loadImages = async () => {
+        const newLoadedImages = new Map<string, HTMLImageElement>();
+        
+        // Keep existing loaded images
+        for (const [id, img] of loadedImages.entries()) {
+          if (images.some(image => image.id === id)) {
+            newLoadedImages.set(id, img);
+          }
+        }
+        
+        // Load new images
+        for (const image of images) {
+          if (!newLoadedImages.has(image.id)) {
+            try {
+              const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const imgElement = new Image();
+                imgElement.crossOrigin = 'anonymous';
+                imgElement.onload = () => resolve(imgElement);
+                imgElement.onerror = reject;
+                imgElement.src = image.url;
+              });
+              newLoadedImages.set(image.id, img);
+            } catch (error) {
+              console.error('Failed to load image:', image.name, error);
+            }
+          }
+        }
+        
+        setLoadedImages(newLoadedImages);
+      };
+
+      loadImages();
+    }, [images]);
+
+    const renderCanvas = useCallback(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -31,7 +144,8 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       canvas.width = frameWidth;
       canvas.height = frameHeight;
 
-      // Clear canvas
+      // Clear canvas completely
+      ctx.clearRect(0, 0, frameWidth, frameHeight);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, frameWidth, frameHeight);
 
@@ -47,52 +161,23 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       const cellWidth = (availableWidth - totalHorizontalGaps) / config.cols;
       const cellHeight = (availableHeight - totalVerticalGaps) / config.rows;
 
-      // Draw images
-      const imagePromises = images.slice(0, config.cells).map((image, index) => {
-        return new Promise<void>((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
+      // Draw all cells (images and placeholders) in order
+      for (let i = 0; i < config.cells; i++) {
+        const row = Math.floor(i / config.cols);
+        const col = i % config.cols;
+        
+        // Calculate position with margin and gaps
+        const x = spacing.margin + col * (cellWidth + spacing.gap);
+        const y = spacing.margin + row * (cellHeight + spacing.gap);
+
+        if (i < images.length) {
+          // Draw image if loaded
+          const image = images[i];
+          const loadedImg = loadedImages.get(image.id);
           
-          img.onload = () => {
-            const row = Math.floor(index / config.cols);
-            const col = index % config.cols;
-            
-            // Calculate position with margin and gaps
-            const x = spacing.margin + col * (cellWidth + spacing.gap);
-            const y = spacing.margin + row * (cellHeight + spacing.gap);
-
-            // Calculate scaling to cover the cell while maintaining aspect ratio
-            const imgAspectRatio = img.width / img.height;
-            const cellAspectRatio = cellWidth / cellHeight;
-
-            let drawWidth, drawHeight, sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
-
-            if (imgAspectRatio > cellAspectRatio) {
-              // Image is wider than cell - crop horizontally
-              drawWidth = cellWidth;
-              drawHeight = cellHeight;
-              sourceWidth = img.height * cellAspectRatio;
-              sourceX = (img.width - sourceWidth) / 2;
-            } else {
-              // Image is taller than cell - crop vertically
-              drawWidth = cellWidth;
-              drawHeight = cellHeight;
-              sourceHeight = img.width / cellAspectRatio;
-              sourceY = (img.height - sourceHeight) / 2;
-            }
-
-            // Clip to cell boundaries
-            ctx.save();
-            ctx.rect(x, y, cellWidth, cellHeight);
-            ctx.clip();
-
-            // Draw image using source rectangle for proper cropping
-            ctx.drawImage(
-              img,
-              sourceX, sourceY, sourceWidth, sourceHeight, // Source rectangle
-              x, y, drawWidth, drawHeight // Destination rectangle
-            );
-            ctx.restore();
+          if (loadedImg) {
+            // Draw image with adjustment
+            drawImageWithAdjustment(ctx, loadedImg, x, y, cellWidth, cellHeight, image.adjustment);
 
             // Draw border only when there's spacing between images
             if (spacing.gap > 0) {
@@ -100,46 +185,68 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
               ctx.lineWidth = 1;
               ctx.strokeRect(x, y, cellWidth, cellHeight);
             }
-
-            resolve();
-          };
-
-          img.onerror = () => {
-            // Draw placeholder for failed images
-            const row = Math.floor(index / config.cols);
-            const col = index % config.cols;
-            
-            // Calculate position with margin and gaps
-            const x = spacing.margin + col * (cellWidth + spacing.gap);
-            const y = spacing.margin + row * (cellHeight + spacing.gap);
-
+          } else {
+            // Draw loading placeholder
             ctx.fillStyle = '#f3f4f6';
             ctx.fillRect(x, y, cellWidth, cellHeight);
             
             ctx.fillStyle = '#9ca3af';
             ctx.font = '16px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Failed to load', x + cellWidth / 2, y + cellHeight / 2);
+            ctx.fillText('Loading...', x + cellWidth / 2, y + cellHeight / 2);
+          }
+        } else {
+          // Draw placeholder for empty cell
+          ctx.fillStyle = '#f9fafb';
+          ctx.fillRect(x, y, cellWidth, cellHeight);
 
-            resolve();
-          };
+          // Draw dashed border only when there's spacing between images
+          if (spacing.gap > 0) {
+            ctx.setLineDash([10, 10]);
+            ctx.strokeStyle = '#d1d5db';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, cellWidth, cellHeight);
+            ctx.setLineDash([]);
+          }
 
-          img.src = image.url;
-        });
-      });
+          // Draw placeholder text
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Drop image here', x + cellWidth / 2, y + cellHeight / 2);
+        }
+      }
 
-      Promise.all(imagePromises).catch(console.error);
-    }, [images, layout, frameWidth, frameHeight, config, spacing]);
+      // Draw hover overlay if applicable
+      if (hoveredImageIndex !== null && hoveredImageIndex < images.length) {
+        const index = hoveredImageIndex;
+        const row = Math.floor(index / config.cols);
+        const col = index % config.cols;
+        
+        const cellX = spacing.margin + col * (cellWidth + spacing.gap);
+        const cellY = spacing.margin + row * (cellHeight + spacing.gap);
+        
+        drawHoverOverlay(ctx, cellX, cellY, cellWidth, cellHeight);
+      }
+    }, [images, frameWidth, frameHeight, config, spacing, drawImageWithAdjustment, hoveredImageIndex, drawHoverOverlay, loadedImages]);
 
-    // Fill empty cells with placeholders
     useEffect(() => {
-      if (images.length >= config.cells) return;
+      renderCanvas();
+    }, [renderCanvas]);
 
+    // Remove the separate placeholder useEffect since it's now integrated above
+
+    // Get cell info for a given point
+    const getCellInfoAtPoint = useCallback((x: number, y: number) => {
       const canvas = canvasRef.current;
-      if (!canvas) return;
+      if (!canvas) return null;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const canvasX = (x - rect.left) * scaleX;
+      const canvasY = (y - rect.top) * scaleY;
 
       // Calculate available space for images (excluding margins)
       const availableWidth = frameWidth - (2 * spacing.margin);
@@ -153,34 +260,151 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       const cellWidth = (availableWidth - totalHorizontalGaps) / config.cols;
       const cellHeight = (availableHeight - totalVerticalGaps) / config.rows;
 
-      for (let i = images.length; i < config.cells; i++) {
-        const row = Math.floor(i / config.cols);
-        const col = i % config.cols;
+      // Find which cell the point is in
+      for (let index = 0; index < Math.min(images.length, config.cells); index++) {
+        const row = Math.floor(index / config.cols);
+        const col = index % config.cols;
         
-        // Calculate position with margin and gaps
-        const x = spacing.margin + col * (cellWidth + spacing.gap);
-        const y = spacing.margin + row * (cellHeight + spacing.gap);
+        const cellX = spacing.margin + col * (cellWidth + spacing.gap);
+        const cellY = spacing.margin + row * (cellHeight + spacing.gap);
 
-        // Draw placeholder
-        ctx.fillStyle = '#f9fafb';
-        ctx.fillRect(x, y, cellWidth, cellHeight);
-
-        // Draw dashed border only when there's spacing between images
-        if (spacing.gap > 0) {
-          ctx.setLineDash([10, 10]);
-          ctx.strokeStyle = '#d1d5db';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x, y, cellWidth, cellHeight);
-          ctx.setLineDash([]);
+        if (canvasX >= cellX && canvasX <= cellX + cellWidth &&
+            canvasY >= cellY && canvasY <= cellY + cellHeight) {
+          return {
+            index,
+            cellX,
+            cellY,
+            cellWidth,
+            cellHeight,
+            localX: canvasX - cellX,
+            localY: canvasY - cellY
+          };
         }
-
-        // Draw placeholder text
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Drop image here', x + cellWidth / 2, y + cellHeight / 2);
       }
-    }, [images.length, config, frameWidth, frameHeight, spacing]);
+      
+      return null;
+    }, [frameWidth, frameHeight, spacing, config, images.length]);
+
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+      const cellInfo = getCellInfoAtPoint(e.clientX, e.clientY);
+      if (cellInfo && onImageAdjustmentChange) {
+        setIsDragging(true);
+        setDragImageIndex(cellInfo.index);
+        setLastMousePos({ x: e.clientX, y: e.clientY });
+        e.preventDefault();
+      }
+    }, [getCellInfoAtPoint, onImageAdjustmentChange]);
+
+    const handleMouseMove = useCallback((e: MouseEvent) => {
+      if (!isDragging || dragImageIndex === null || !onImageAdjustmentChange) return;
+
+      const deltaX = e.clientX - lastMousePos.x;
+      const deltaY = e.clientY - lastMousePos.y;
+      
+      const image = images[dragImageIndex];
+      if (!image) return;
+
+      const adjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+      
+      // Calculate available space for images (excluding margins)
+      const availableWidth = frameWidth - (2 * spacing.margin);
+      const availableHeight = frameHeight - (2 * spacing.margin);
+
+      // Calculate total gaps
+      const totalHorizontalGaps = (config.cols - 1) * spacing.gap;
+      const totalVerticalGaps = (config.rows - 1) * spacing.gap;
+
+      // Calculate cell dimensions (excluding gaps)
+      const cellWidth = (availableWidth - totalHorizontalGaps) / config.cols;
+      const cellHeight = (availableHeight - totalVerticalGaps) / config.rows;
+      
+      // Convert pixel delta to percentage delta
+      const sensitivityX = 200 / cellWidth; // Higher sensitivity for better control
+      const sensitivityY = 200 / cellHeight;
+      
+      const newOffsetX = adjustment.offsetX + deltaX * sensitivityX;
+      const newOffsetY = adjustment.offsetY + deltaY * sensitivityY;
+      
+      onImageAdjustmentChange(image.id, {
+        ...adjustment,
+        offsetX: Math.max(-100, Math.min(100, newOffsetX)),
+        offsetY: Math.max(-100, Math.min(100, newOffsetY))
+      });
+      
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+    }, [isDragging, dragImageIndex, lastMousePos, images, onImageAdjustmentChange, frameWidth, frameHeight, spacing, config]);
+
+    const handleCanvasMouseEnter = useCallback(() => {
+      if (onImageAdjustmentChange && images.length > 0) {
+        // Disable page scrolling when mouse enters canvas area
+        document.body.style.overflow = 'hidden';
+      }
+    }, [onImageAdjustmentChange, images.length]);
+
+    const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+      if (!onImageAdjustmentChange || isDragging) return;
+      
+      const cellInfo = getCellInfoAtPoint(e.clientX, e.clientY);
+      setHoveredImageIndex(cellInfo?.index ?? null);
+    }, [getCellInfoAtPoint, onImageAdjustmentChange, isDragging]);
+
+    const handleCanvasMouseLeave = useCallback(() => {
+      // Re-enable page scrolling when mouse leaves canvas area
+      document.body.style.overflow = 'auto';
+      setHoveredImageIndex(null);
+    }, []);
+
+    // Handle wheel events with proper scroll prevention
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || !onImageAdjustmentChange) return;
+
+      const handleWheelEvent = (e: WheelEvent) => {
+        const cellInfo = getCellInfoAtPoint(e.clientX, e.clientY);
+        if (!cellInfo) return;
+
+        // Prevent page scroll when zooming images
+        e.preventDefault();
+        e.stopPropagation();
+
+        const image = images[cellInfo.index];
+        if (!image) return;
+
+        const adjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+        const zoomDelta = -e.deltaY * 0.002; // Smooth zoom
+        const newZoom = Math.max(0.5, Math.min(3.0, adjustment.zoom + zoomDelta));
+        
+        onImageAdjustmentChange(image.id, {
+          ...adjustment,
+          zoom: newZoom
+        });
+      };
+
+      // Add non-passive wheel listener to enable preventDefault
+      canvas.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+      return () => {
+        canvas.removeEventListener('wheel', handleWheelEvent);
+      };
+    }, [getCellInfoAtPoint, images, onImageAdjustmentChange]);
+
+    const handleMouseUp = useCallback(() => {
+      setIsDragging(false);
+      setDragImageIndex(null);
+    }, []);
+
+    // Global mouse event listeners
+    useEffect(() => {
+      if (isDragging) {
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+      }
+    }, [isDragging, handleMouseMove, handleMouseUp]);
 
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -192,14 +416,31 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
         </div>
         
         <div className="flex justify-center">
-          <canvas
-            ref={canvasRef}
-            className="border border-gray-200 rounded max-w-full h-auto"
-            style={{
-              maxWidth: '100%',
-              height: 'auto',
-            }}
-          />
+          <div 
+            className="relative overflow-hidden"
+            style={{ touchAction: 'none' }}
+          >
+            <canvas
+              ref={canvasRef}
+              className={`border border-gray-200 rounded max-w-full h-auto ${
+                onImageAdjustmentChange ? 'cursor-move' : ''
+              }`}
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                display: 'block'
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseEnter={handleCanvasMouseEnter}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseLeave={handleCanvasMouseLeave}
+            />
+            {onImageAdjustmentChange && images.length > 0 && (
+              <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs opacity-75 pointer-events-none">
+                Click & drag to move • Scroll to zoom
+              </div>
+            )}
+          </div>
         </div>
         
         {images.length > 0 && (
