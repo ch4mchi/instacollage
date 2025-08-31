@@ -21,12 +21,19 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
     const [hoveredImageIndex, setHoveredImageIndex] = useState<number | null>(null);
     const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
     
-    // Touch event state for pinch-to-zoom
+    // Touch event state for pinch-to-zoom and panning
     const [touchState, setTouchState] = useState<{
       touches: React.Touch[];
       initialDistance: number;
       initialZoom: number;
       targetImageIndex: number | null;
+    } | null>(null);
+    
+    // Single touch state for panning
+    const [panState, setPanState] = useState<{
+      isActive: boolean;
+      targetImageIndex: number | null;
+      lastTouch: { x: number; y: number };
     } | null>(null);
 
     useImperativeHandle(ref, () => canvasRef.current!);
@@ -417,74 +424,157 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       setDragImageIndex(null);
     }, []);
 
-    // Touch event handlers for pinch-to-zoom
+    // Touch event handlers for pinch-to-zoom and panning
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
-      if (!onImageAdjustmentChange || e.touches.length !== 2) {
-        setTouchState(null);
-        return;
+      if (!onImageAdjustmentChange) return;
+
+      if (e.touches.length === 2) {
+        // Two-finger touch: initiate pinch-to-zoom
+        setPanState(null); // Clear any existing pan state
+        
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const center = getTouchCenter(touch1, touch2);
+        const cellInfo = getCellInfoAtPoint(center.x, center.y);
+        
+        if (!cellInfo) {
+          setTouchState(null);
+          return;
+        }
+
+        const image = images[cellInfo.index];
+        if (!image) {
+          setTouchState(null);
+          return;
+        }
+
+        const initialDistance = getTouchDistance(touch1, touch2);
+        const currentAdjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+        
+        setTouchState({
+          touches: Array.from(e.touches),
+          initialDistance,
+          initialZoom: currentAdjustment.zoom,
+          targetImageIndex: cellInfo.index
+        });
+
+        e.preventDefault();
+      } else if (e.touches.length === 1) {
+        // Single-finger touch: initiate panning
+        setTouchState(null); // Clear any existing zoom state
+        
+        const touch = e.touches[0];
+        const cellInfo = getCellInfoAtPoint(touch.clientX, touch.clientY);
+        
+        if (!cellInfo) {
+          setPanState(null);
+          return;
+        }
+
+        const image = images[cellInfo.index];
+        if (!image) {
+          setPanState(null);
+          return;
+        }
+
+        // Only enable panning if the image is zoomed
+        const adjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+        if (adjustment.zoom > 1) {
+          setPanState({
+            isActive: true,
+            targetImageIndex: cellInfo.index,
+            lastTouch: { x: touch.clientX, y: touch.clientY }
+          });
+          e.preventDefault();
+        } else {
+          setPanState(null);
+        }
       }
-
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const center = getTouchCenter(touch1, touch2);
-      const cellInfo = getCellInfoAtPoint(center.x, center.y);
-      
-      if (!cellInfo) {
-        setTouchState(null);
-        return;
-      }
-
-      const image = images[cellInfo.index];
-      if (!image) {
-        setTouchState(null);
-        return;
-      }
-
-      const initialDistance = getTouchDistance(touch1, touch2);
-      const currentAdjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
-      
-      setTouchState({
-        touches: Array.from(e.touches),
-        initialDistance,
-        initialZoom: currentAdjustment.zoom,
-        targetImageIndex: cellInfo.index
-      });
-
-      e.preventDefault();
     }, [onImageAdjustmentChange, getTouchCenter, getTouchDistance, getCellInfoAtPoint, images]);
 
     const handleTouchMove = useCallback((e: React.TouchEvent) => {
-      if (!touchState || !onImageAdjustmentChange || e.touches.length !== 2) {
-        return;
+      if (!onImageAdjustmentChange) return;
+
+      if (e.touches.length === 2 && touchState) {
+        // Two-finger touch: handle pinch-to-zoom
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = getTouchDistance(touch1, touch2);
+        
+        if (touchState.targetImageIndex === null) return;
+        
+        const image = images[touchState.targetImageIndex];
+        if (!image) return;
+
+        // Calculate zoom based on distance change
+        const scaleChange = currentDistance / touchState.initialDistance;
+        const newZoom = touchState.initialZoom * scaleChange;
+        const constrainedZoom = Math.max(0.5, Math.min(3.0, newZoom));
+
+        const currentAdjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+        
+        onImageAdjustmentChange(image.id, {
+          ...currentAdjustment,
+          zoom: constrainedZoom
+        });
+
+        e.preventDefault();
+      } else if (e.touches.length === 1 && panState && panState.isActive) {
+        // Single-finger touch: handle panning
+        const touch = e.touches[0];
+        
+        if (panState.targetImageIndex === null) return;
+        
+        const image = images[panState.targetImageIndex];
+        if (!image) return;
+
+        const deltaX = touch.clientX - panState.lastTouch.x;
+        const deltaY = touch.clientY - panState.lastTouch.y;
+        
+        const adjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+        
+        // Calculate available space for images (excluding margins)
+        const availableWidth = frameWidth - (2 * spacing.margin);
+        const availableHeight = frameHeight - (2 * spacing.margin);
+
+        // Calculate total gaps
+        const totalHorizontalGaps = (config.cols - 1) * spacing.gap;
+        const totalVerticalGaps = (config.rows - 1) * spacing.gap;
+
+        // Calculate cell dimensions (excluding gaps)
+        const cellWidth = (availableWidth - totalHorizontalGaps) / config.cols;
+        const cellHeight = (availableHeight - totalVerticalGaps) / config.rows;
+        
+        // Convert pixel delta to percentage delta
+        const sensitivityX = 200 / cellWidth; // Higher sensitivity for better control
+        const sensitivityY = 200 / cellHeight;
+        
+        const newOffsetX = adjustment.offsetX + deltaX * sensitivityX;
+        const newOffsetY = adjustment.offsetY + deltaY * sensitivityY;
+        
+        onImageAdjustmentChange(image.id, {
+          ...adjustment,
+          offsetX: Math.max(-100, Math.min(100, newOffsetX)),
+          offsetY: Math.max(-100, Math.min(100, newOffsetY))
+        });
+        
+        // Update pan state with new touch position
+        setPanState({
+          ...panState,
+          lastTouch: { x: touch.clientX, y: touch.clientY }
+        });
+
+        e.preventDefault();
       }
-
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const currentDistance = getTouchDistance(touch1, touch2);
-      
-      if (touchState.targetImageIndex === null) return;
-      
-      const image = images[touchState.targetImageIndex];
-      if (!image) return;
-
-      // Calculate zoom based on distance change
-      const scaleChange = currentDistance / touchState.initialDistance;
-      const newZoom = touchState.initialZoom * scaleChange;
-      const constrainedZoom = Math.max(0.5, Math.min(3.0, newZoom));
-
-      const currentAdjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
-      
-      onImageAdjustmentChange(image.id, {
-        ...currentAdjustment,
-        zoom: constrainedZoom
-      });
-
-      e.preventDefault();
-    }, [touchState, onImageAdjustmentChange, getTouchDistance, images]);
+    }, [touchState, panState, onImageAdjustmentChange, getTouchDistance, images, frameWidth, frameHeight, spacing, config]);
 
     const handleTouchEnd = useCallback((e: React.TouchEvent) => {
       if (e.touches.length < 2) {
         setTouchState(null);
+      }
+      
+      if (e.touches.length === 0) {
+        setPanState(null);
       }
     }, []);
 
@@ -507,7 +597,10 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       if (!canvas || !onImageAdjustmentChange) return;
 
       const preventDefaultTouch = (e: TouchEvent) => {
+        // Prevent default for multi-touch (pinch-to-zoom) and single-touch on zoomed images (panning)
         if (e.touches.length === 2) {
+          e.preventDefault();
+        } else if (e.touches.length === 1 && panState?.isActive) {
           e.preventDefault();
         }
       };
@@ -520,7 +613,7 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
         canvas.removeEventListener('touchstart', preventDefaultTouch);
         canvas.removeEventListener('touchmove', preventDefaultTouch);
       };
-    }, [onImageAdjustmentChange]);
+    }, [onImageAdjustmentChange, panState]);
 
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -561,7 +654,7 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
             {onImageAdjustmentChange && images.length > 0 && (
               <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs opacity-75 pointer-events-none">
                 <span className="hidden sm:inline">Click & drag to move • Scroll to zoom</span>
-                <span className="sm:hidden">Drag to move • Pinch to zoom</span>
+                <span className="sm:hidden">Drag to move • Pinch to zoom • Tap & drag zoomed images</span>
               </div>
             )}
           </div>
