@@ -6,7 +6,7 @@ import { LayoutSelector } from './LayoutSelector';
 import { FrameSettings } from './FrameSettings';
 import { CollageCanvas } from './CollageCanvas';
 import { ExportControls } from './ExportControls';
-import { UploadedImage, CollageLayout, AspectRatio, ExportFormat } from '@/types/collage';
+import { UploadedImage, CollageLayout, AspectRatio, ExportFormat, SpacingSettings } from '@/types/collage';
 
 export function CollageApp() {
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -15,6 +15,7 @@ export function CollageApp() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('4:3');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('jpg');
   const [exportQuality, setExportQuality] = useState<number>(90);
+  const [spacing, setSpacing] = useState<SpacingSettings>({ gap: 10, margin: 20 });
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -63,8 +64,10 @@ export function CollageApp() {
             <FrameSettings
               frameWidth={frameWidth}
               aspectRatio={aspectRatio}
+              spacing={spacing}
               onFrameWidthChange={setFrameWidth}
               onAspectRatioChange={setAspectRatio}
+              onSpacingChange={setSpacing}
             />
             
             <ExportControls
@@ -85,6 +88,7 @@ export function CollageApp() {
               layout={selectedLayout}
               frameWidth={frameWidth}
               aspectRatio={aspectRatio}
+              spacing={spacing}
             />
           </div>
         </div>

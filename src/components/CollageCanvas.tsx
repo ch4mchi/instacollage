@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
-import { UploadedImage, CollageLayout, AspectRatio, LAYOUT_CONFIGS, ASPECT_RATIOS } from '@/types/collage';
+import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS, ASPECT_RATIOS } from '@/types/collage';
 
 interface CollageCanvasProps {
   images: UploadedImage[];
   layout: CollageLayout;
   frameWidth: number;
   aspectRatio: AspectRatio;
+  spacing: SpacingSettings;
 }
 
 export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
-  ({ images, layout, frameWidth, aspectRatio }, ref) => {
+  ({ images, layout, frameWidth, aspectRatio, spacing }, ref) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
     useImperativeHandle(ref, () => canvasRef.current!);
@@ -34,9 +35,17 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, frameWidth, frameHeight);
 
-      // Calculate cell dimensions
-      const cellWidth = frameWidth / config.cols;
-      const cellHeight = frameHeight / config.rows;
+      // Calculate available space for images (excluding margins)
+      const availableWidth = frameWidth - (2 * spacing.margin);
+      const availableHeight = frameHeight - (2 * spacing.margin);
+
+      // Calculate total gaps
+      const totalHorizontalGaps = (config.cols - 1) * spacing.gap;
+      const totalVerticalGaps = (config.rows - 1) * spacing.gap;
+
+      // Calculate cell dimensions (excluding gaps)
+      const cellWidth = (availableWidth - totalHorizontalGaps) / config.cols;
+      const cellHeight = (availableHeight - totalVerticalGaps) / config.rows;
 
       // Draw images
       const imagePromises = images.slice(0, config.cells).map((image, index) => {
@@ -47,8 +56,10 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
           img.onload = () => {
             const row = Math.floor(index / config.cols);
             const col = index % config.cols;
-            const x = col * cellWidth;
-            const y = row * cellHeight;
+            
+            // Calculate position with margin and gaps
+            const x = spacing.margin + col * (cellWidth + spacing.gap);
+            const y = spacing.margin + row * (cellHeight + spacing.gap);
 
             // Calculate scaling to cover the cell while maintaining aspect ratio
             const imgAspectRatio = img.width / img.height;
@@ -83,10 +94,12 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
             );
             ctx.restore();
 
-            // Draw border
-            ctx.strokeStyle = '#e5e7eb';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, cellWidth, cellHeight);
+            // Draw border only when there's spacing between images
+            if (spacing.gap > 0) {
+              ctx.strokeStyle = '#e5e7eb';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x, y, cellWidth, cellHeight);
+            }
 
             resolve();
           };
@@ -95,8 +108,10 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
             // Draw placeholder for failed images
             const row = Math.floor(index / config.cols);
             const col = index % config.cols;
-            const x = col * cellWidth;
-            const y = row * cellHeight;
+            
+            // Calculate position with margin and gaps
+            const x = spacing.margin + col * (cellWidth + spacing.gap);
+            const y = spacing.margin + row * (cellHeight + spacing.gap);
 
             ctx.fillStyle = '#f3f4f6';
             ctx.fillRect(x, y, cellWidth, cellHeight);
@@ -114,7 +129,7 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       });
 
       Promise.all(imagePromises).catch(console.error);
-    }, [images, layout, frameWidth, frameHeight, config]);
+    }, [images, layout, frameWidth, frameHeight, config, spacing]);
 
     // Fill empty cells with placeholders
     useEffect(() => {
@@ -126,25 +141,38 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const cellWidth = frameWidth / config.cols;
-      const cellHeight = frameHeight / config.rows;
+      // Calculate available space for images (excluding margins)
+      const availableWidth = frameWidth - (2 * spacing.margin);
+      const availableHeight = frameHeight - (2 * spacing.margin);
+
+      // Calculate total gaps
+      const totalHorizontalGaps = (config.cols - 1) * spacing.gap;
+      const totalVerticalGaps = (config.rows - 1) * spacing.gap;
+
+      // Calculate cell dimensions (excluding gaps)
+      const cellWidth = (availableWidth - totalHorizontalGaps) / config.cols;
+      const cellHeight = (availableHeight - totalVerticalGaps) / config.rows;
 
       for (let i = images.length; i < config.cells; i++) {
         const row = Math.floor(i / config.cols);
         const col = i % config.cols;
-        const x = col * cellWidth;
-        const y = row * cellHeight;
+        
+        // Calculate position with margin and gaps
+        const x = spacing.margin + col * (cellWidth + spacing.gap);
+        const y = spacing.margin + row * (cellHeight + spacing.gap);
 
         // Draw placeholder
         ctx.fillStyle = '#f9fafb';
         ctx.fillRect(x, y, cellWidth, cellHeight);
 
-        // Draw dashed border
-        ctx.setLineDash([10, 10]);
-        ctx.strokeStyle = '#d1d5db';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, cellWidth, cellHeight);
-        ctx.setLineDash([]);
+        // Draw dashed border only when there's spacing between images
+        if (spacing.gap > 0) {
+          ctx.setLineDash([10, 10]);
+          ctx.strokeStyle = '#d1d5db';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, cellWidth, cellHeight);
+          ctx.setLineDash([]);
+        }
 
         // Draw placeholder text
         ctx.fillStyle = '#9ca3af';
@@ -152,7 +180,7 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
         ctx.textAlign = 'center';
         ctx.fillText('Drop image here', x + cellWidth / 2, y + cellHeight / 2);
       }
-    }, [images.length, config, frameWidth, frameHeight]);
+    }, [images.length, config, frameWidth, frameHeight, spacing]);
 
     return (
       <div className="bg-white rounded-lg shadow p-6">

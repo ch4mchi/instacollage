@@ -1,13 +1,15 @@
 'use client';
 
 import React from 'react';
-import { AspectRatio } from '@/types/collage';
+import { AspectRatio, SpacingSettings } from '@/types/collage';
 
 interface FrameSettingsProps {
   frameWidth: number;
   aspectRatio: AspectRatio;
+  spacing: SpacingSettings;
   onFrameWidthChange: (width: number) => void;
   onAspectRatioChange: (ratio: AspectRatio) => void;
+  onSpacingChange: (spacing: SpacingSettings) => void;
 }
 
 const ASPECT_RATIO_OPTIONS: { value: AspectRatio; label: string }[] = [
@@ -24,8 +26,10 @@ const ASPECT_RATIO_OPTIONS: { value: AspectRatio; label: string }[] = [
 export function FrameSettings({
   frameWidth,
   aspectRatio,
+  spacing,
   onFrameWidthChange,
   onAspectRatioChange,
+  onSpacingChange,
 }: FrameSettingsProps) {
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -78,6 +82,66 @@ export function FrameSettings({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Spacing Between Images */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Spacing Between Images (px)
+          </label>
+          <div className="flex items-center space-x-3">
+            <input
+              type="range"
+              min="0"
+              max="50"
+              step="1"
+              value={spacing.gap}
+              onChange={(e) => onSpacingChange({ ...spacing, gap: Number(e.target.value) })}
+              className="flex-grow"
+            />
+            <input
+              type="number"
+              min="0"
+              max="50"
+              step="1"
+              value={spacing.gap}
+              onChange={(e) => onSpacingChange({ ...spacing, gap: Number(e.target.value) })}
+              className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
+            />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Range: 0px - 50px
+          </div>
+        </div>
+
+        {/* Outer Margin */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Outer Margin (px)
+          </label>
+          <div className="flex items-center space-x-3">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={spacing.margin}
+              onChange={(e) => onSpacingChange({ ...spacing, margin: Number(e.target.value) })}
+              className="flex-grow"
+            />
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={spacing.margin}
+              onChange={(e) => onSpacingChange({ ...spacing, margin: Number(e.target.value) })}
+              className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
+            />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Range: 0px - 100px
+          </div>
         </div>
       </div>
     </div>

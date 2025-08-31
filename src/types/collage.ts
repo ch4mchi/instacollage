@@ -18,6 +18,11 @@ export interface LayoutDimensions {
   cells: number;
 }
 
+export interface SpacingSettings {
+  gap: number; // Space between images in pixels
+  margin: number; // Outer margin around the entire collage in pixels
+}
+
 export const LAYOUT_CONFIGS: Record<CollageLayout, LayoutDimensions> = {
   '1x2': { rows: 1, cols: 2, cells: 2 },
   '2x1': { rows: 2, cols: 1, cells: 2 },
