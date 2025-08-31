@@ -13,6 +13,7 @@ interface FrameSettingsProps {
 }
 
 const ASPECT_RATIO_OPTIONS: { value: AspectRatio; label: string }[] = [
+  { value: '1:1', label: '1:1 (Square)' },
   { value: '2:3', label: '2:3 (Portrait)' },
   { value: '3:2', label: '3:2 (Landscape)' },
   { value: '3:4', label: '3:4 (Portrait)' },

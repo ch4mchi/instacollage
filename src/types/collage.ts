@@ -8,7 +8,7 @@ export interface UploadedImage {
 
 export type CollageLayout = '1x2' | '2x1' | '2x2' | '3x1' | '1x3';
 
-export type AspectRatio = '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '16:9' | '9:16';
+export type AspectRatio = '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '16:9' | '9:16';
 
 export type ExportFormat = 'jpg' | 'png';
 
@@ -32,6 +32,7 @@ export const LAYOUT_CONFIGS: Record<CollageLayout, LayoutDimensions> = {
 };
 
 export const ASPECT_RATIOS: Record<AspectRatio, number> = {
+  '1:1': 1,
   '2:3': 2/3,
   '3:2': 3/2,
   '3:4': 3/4,
