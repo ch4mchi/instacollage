@@ -78,6 +78,48 @@ pnpm start
 - `pnpm build` - Build the application for production
 - `pnpm start` - Start the production server
 - `pnpm lint` - Run ESLint for code quality checks
+- `pnpm export` - Build and export static files for GitHub Pages
+- `pnpm deploy` - Build, export, and prepare files for deployment
+
+## 🚀 GitHub Pages Deployment
+
+This project is configured for automatic deployment to GitHub Pages using GitHub Actions.
+
+### Automatic Deployment
+
+1. **Push to main/master branch** - The app will automatically build and deploy
+2. **Access your deployed app** at: `https://<your-username>.github.io/instacollage`
+
+### Manual Deployment Setup
+
+1. **Enable GitHub Pages** in your repository settings:
+   - Go to Settings → Pages
+   - Set Source to "GitHub Actions"
+
+2. **Repository Settings** (if needed):
+   - Ensure Actions have write permissions: Settings → Actions → General → Workflow permissions
+
+3. **Push your code**:
+```bash
+git add .
+git commit -m "Add GitHub Pages deployment"
+git push origin main
+```
+
+### Local Static Export
+
+To test the static export locally:
+```bash
+pnpm run export
+# Serve the 'out' directory with any static file server
+```
+
+### Configuration Details
+
+- **Static Export**: Configured for client-only operation (no server required)
+- **Asset Optimization**: Images and assets are optimized for static hosting
+- **Base Path**: Automatically configured for GitHub Pages subdirectory
+- **Jekyll Bypass**: Includes `.nojekyll` file for proper asset serving
 
 ## 🎨 Usage
 
