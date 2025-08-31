@@ -60,7 +60,7 @@ export function CollageApp() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Control Panel */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-6 order-1 lg:order-1">
             <ImageUpload 
               onImagesUpload={handleImagesUpload}
               existingImages={images}
@@ -88,18 +88,21 @@ export function CollageApp() {
               onSpacingChange={setSpacing}
             />
             
-            <ExportControls
-              format={exportFormat}
-              quality={exportQuality}
-              onFormatChange={setExportFormat}
-              onQualityChange={setExportQuality}
-              onExport={handleExport}
-              disabled={images.length === 0}
-            />
+            {/* Export Controls - shown here on desktop */}
+            <div className="hidden lg:block">
+              <ExportControls
+                format={exportFormat}
+                quality={exportQuality}
+                onFormatChange={setExportFormat}
+                onQualityChange={setExportQuality}
+                onExport={handleExport}
+                disabled={images.length === 0}
+              />
+            </div>
           </div>
 
           {/* Canvas Area */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-2 lg:order-2">
             <CollageCanvas
               ref={canvasRef}
               images={images}
@@ -107,6 +110,18 @@ export function CollageApp() {
               frameWidth={frameWidth}
               aspectRatio={aspectRatio}
               spacing={spacing}
+            />
+          </div>
+
+          {/* Export Controls - shown here on mobile, after canvas */}
+          <div className="lg:hidden order-3">
+            <ExportControls
+              format={exportFormat}
+              quality={exportQuality}
+              onFormatChange={setExportFormat}
+              onQualityChange={setExportQuality}
+              onExport={handleExport}
+              disabled={images.length === 0}
             />
           </div>
         </div>
