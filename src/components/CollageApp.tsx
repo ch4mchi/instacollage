@@ -7,14 +7,13 @@ import { LayoutSelector } from './LayoutSelector';
 import { FrameSettings } from './FrameSettings';
 import { CollageCanvas } from './CollageCanvas';
 import { ExportControls } from './ExportControls';
-import { UploadedImage, CollageLayout, AspectRatio, ExportFormat, SpacingSettings, LAYOUT_CONFIGS } from '@/types/collage';
+import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS } from '@/types/collage';
 
 export function CollageApp() {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [selectedLayout, setSelectedLayout] = useState<CollageLayout>('2x2');
   const [frameWidth, setFrameWidth] = useState<number>(800);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('4:3');
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('jpg');
   const [exportQuality, setExportQuality] = useState<number>(90);
   const [spacing, setSpacing] = useState<SpacingSettings>({ gap: 10, margin: 20 });
   
@@ -34,8 +33,8 @@ export function CollageApp() {
     if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
-    const mimeType = exportFormat === 'jpg' ? 'image/jpeg' : 'image/png';
-    const quality = exportFormat === 'jpg' ? exportQuality / 100 : undefined;
+    const mimeType = 'image/jpeg';
+    const quality = exportQuality / 100;
     
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -43,13 +42,13 @@ export function CollageApp() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `collage.${exportFormat}`;
+      link.download = 'collage.jpg';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }, mimeType, quality);
-  }, [exportFormat, exportQuality]);
+  }, [exportQuality]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -91,9 +90,7 @@ export function CollageApp() {
             {/* Export Controls - shown here on desktop */}
             <div className="hidden lg:block">
               <ExportControls
-                format={exportFormat}
                 quality={exportQuality}
-                onFormatChange={setExportFormat}
                 onQualityChange={setExportQuality}
                 onExport={handleExport}
                 disabled={images.length === 0}
@@ -116,9 +113,7 @@ export function CollageApp() {
           {/* Export Controls - shown here on mobile, after canvas */}
           <div className="lg:hidden order-3">
             <ExportControls
-              format={exportFormat}
               quality={exportQuality}
-              onFormatChange={setExportFormat}
               onQualityChange={setExportQuality}
               onExport={handleExport}
               disabled={images.length === 0}

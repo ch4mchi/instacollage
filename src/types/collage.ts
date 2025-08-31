@@ -10,7 +10,7 @@ export type CollageLayout = '1x1' | '1x2' | '2x1' | '2x2' | '3x1' | '1x3';
 
 export type AspectRatio = '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '16:9' | '9:16';
 
-export type ExportFormat = 'jpg' | 'png';
+export type ExportFormat = 'jpg';
 
 export interface LayoutDimensions {
   rows: number;
