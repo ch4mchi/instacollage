@@ -20,11 +20,34 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
     const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
     const [hoveredImageIndex, setHoveredImageIndex] = useState<number | null>(null);
     const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
+    
+    // Touch event state for pinch-to-zoom
+    const [touchState, setTouchState] = useState<{
+      touches: React.Touch[];
+      initialDistance: number;
+      initialZoom: number;
+      targetImageIndex: number | null;
+    } | null>(null);
 
     useImperativeHandle(ref, () => canvasRef.current!);
 
     const frameHeight = frameWidth / ASPECT_RATIOS[aspectRatio];
     const config = LAYOUT_CONFIGS[layout];
+
+    // Utility function to calculate distance between two touches
+    const getTouchDistance = useCallback((touch1: React.Touch, touch2: React.Touch) => {
+      const dx = touch1.clientX - touch2.clientX;
+      const dy = touch1.clientY - touch2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }, []);
+
+    // Utility function to get center point between two touches
+    const getTouchCenter = useCallback((touch1: React.Touch, touch2: React.Touch) => {
+      return {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2
+      };
+    }, []);
 
     const drawImageWithAdjustment = useCallback((
       ctx: CanvasRenderingContext2D,
@@ -394,6 +417,77 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       setDragImageIndex(null);
     }, []);
 
+    // Touch event handlers for pinch-to-zoom
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+      if (!onImageAdjustmentChange || e.touches.length !== 2) {
+        setTouchState(null);
+        return;
+      }
+
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const center = getTouchCenter(touch1, touch2);
+      const cellInfo = getCellInfoAtPoint(center.x, center.y);
+      
+      if (!cellInfo) {
+        setTouchState(null);
+        return;
+      }
+
+      const image = images[cellInfo.index];
+      if (!image) {
+        setTouchState(null);
+        return;
+      }
+
+      const initialDistance = getTouchDistance(touch1, touch2);
+      const currentAdjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+      
+      setTouchState({
+        touches: Array.from(e.touches),
+        initialDistance,
+        initialZoom: currentAdjustment.zoom,
+        targetImageIndex: cellInfo.index
+      });
+
+      e.preventDefault();
+    }, [onImageAdjustmentChange, getTouchCenter, getTouchDistance, getCellInfoAtPoint, images]);
+
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+      if (!touchState || !onImageAdjustmentChange || e.touches.length !== 2) {
+        return;
+      }
+
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const currentDistance = getTouchDistance(touch1, touch2);
+      
+      if (touchState.targetImageIndex === null) return;
+      
+      const image = images[touchState.targetImageIndex];
+      if (!image) return;
+
+      // Calculate zoom based on distance change
+      const scaleChange = currentDistance / touchState.initialDistance;
+      const newZoom = touchState.initialZoom * scaleChange;
+      const constrainedZoom = Math.max(0.5, Math.min(3.0, newZoom));
+
+      const currentAdjustment = image.adjustment || { offsetX: 0, offsetY: 0, zoom: 1 };
+      
+      onImageAdjustmentChange(image.id, {
+        ...currentAdjustment,
+        zoom: constrainedZoom
+      });
+
+      e.preventDefault();
+    }, [touchState, onImageAdjustmentChange, getTouchDistance, images]);
+
+    const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+      if (e.touches.length < 2) {
+        setTouchState(null);
+      }
+    }, []);
+
     // Global mouse event listeners
     useEffect(() => {
       if (isDragging) {
@@ -407,6 +501,27 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       }
     }, [isDragging, handleMouseMove, handleMouseUp]);
 
+    // Prevent default touch behaviors on the canvas to ensure proper touch handling
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || !onImageAdjustmentChange) return;
+
+      const preventDefaultTouch = (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+        }
+      };
+
+      // Add passive: false to allow preventDefault
+      canvas.addEventListener('touchstart', preventDefaultTouch, { passive: false });
+      canvas.addEventListener('touchmove', preventDefaultTouch, { passive: false });
+
+      return () => {
+        canvas.removeEventListener('touchstart', preventDefaultTouch);
+        canvas.removeEventListener('touchmove', preventDefaultTouch);
+      };
+    }, [onImageAdjustmentChange]);
+
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-4">
@@ -419,7 +534,11 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
         <div className="flex justify-center">
           <div 
             className="relative overflow-hidden"
-            style={{ touchAction: 'none' }}
+            style={{ 
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none'
+            }}
           >
             <canvas
               ref={canvasRef}
@@ -435,10 +554,14 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
               onMouseEnter={handleCanvasMouseEnter}
               onMouseMove={handleCanvasMouseMove}
               onMouseLeave={handleCanvasMouseLeave}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             />
             {onImageAdjustmentChange && images.length > 0 && (
               <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs opacity-75 pointer-events-none">
-                Click & drag to move • Scroll to zoom
+                <span className="hidden sm:inline">Click & drag to move • Scroll to zoom</span>
+                <span className="sm:hidden">Drag to move • Pinch to zoom</span>
               </div>
             )}
           </div>
