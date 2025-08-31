@@ -71,6 +71,7 @@ export function ImageAdjustmentCanvas({
     
     // Clip to cell boundaries
     ctx.save();
+    ctx.beginPath();
     ctx.rect(0, 0, cellWidth, cellHeight);
     ctx.clip();
     

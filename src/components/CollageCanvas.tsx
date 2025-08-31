@@ -69,6 +69,7 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
       
       // Clip to cell boundaries
       ctx.save();
+      ctx.beginPath();
       ctx.rect(cellX, cellY, cellWidth, cellHeight);
       ctx.clip();
       
