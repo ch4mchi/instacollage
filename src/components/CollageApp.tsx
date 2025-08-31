@@ -2,11 +2,12 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { ImageUpload } from './ImageUpload';
+import { ImageReorder } from './ImageReorder';
 import { LayoutSelector } from './LayoutSelector';
 import { FrameSettings } from './FrameSettings';
 import { CollageCanvas } from './CollageCanvas';
 import { ExportControls } from './ExportControls';
-import { UploadedImage, CollageLayout, AspectRatio, ExportFormat, SpacingSettings } from '@/types/collage';
+import { UploadedImage, CollageLayout, AspectRatio, ExportFormat, SpacingSettings, LAYOUT_CONFIGS } from '@/types/collage';
 
 export function CollageApp() {
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -22,6 +23,12 @@ export function CollageApp() {
   const handleImagesUpload = useCallback((newImages: UploadedImage[]) => {
     setImages(newImages);
   }, []);
+
+  const handleImagesReorder = useCallback((reorderedImages: UploadedImage[]) => {
+    setImages(reorderedImages);
+  }, []);
+
+  const maxImagesForLayout = LAYOUT_CONFIGS[selectedLayout].cells;
 
   const handleExport = useCallback(() => {
     if (!canvasRef.current) return;
@@ -54,7 +61,18 @@ export function CollageApp() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Control Panel */}
           <div className="lg:col-span-1 space-y-6">
-            <ImageUpload onImagesUpload={handleImagesUpload} />
+            <ImageUpload 
+              onImagesUpload={handleImagesUpload}
+              existingImages={images}
+            />
+            
+            {images.length > 0 && (
+              <ImageReorder
+                images={images}
+                onReorder={handleImagesReorder}
+                maxImages={maxImagesForLayout}
+              />
+            )}
             
             <LayoutSelector
               selectedLayout={selectedLayout}

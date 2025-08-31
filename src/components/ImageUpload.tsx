@@ -5,9 +5,10 @@ import { UploadedImage } from '@/types/collage';
 
 interface ImageUploadProps {
   onImagesUpload: (images: UploadedImage[]) => void;
+  existingImages?: UploadedImage[];
 }
 
-export function ImageUpload({ onImagesUpload }: ImageUploadProps) {
+export function ImageUpload({ onImagesUpload, existingImages = [] }: ImageUploadProps) {
   const handleFileInput = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     
@@ -24,8 +25,14 @@ export function ImageUpload({ onImagesUpload }: ImageUploadProps) {
       });
     });
 
-    Promise.all(imagePromises).then(onImagesUpload);
-  }, [onImagesUpload]);
+    Promise.all(imagePromises).then((newImages) => {
+      // Append new images to existing ones instead of replacing
+      onImagesUpload([...existingImages, ...newImages]);
+    });
+    
+    // Clear the input so the same files can be selected again if needed
+    event.target.value = '';
+  }, [onImagesUpload, existingImages]);
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -52,12 +59,22 @@ export function ImageUpload({ onImagesUpload }: ImageUploadProps) {
       });
     });
 
-    Promise.all(imagePromises).then(onImagesUpload);
-  }, [onImagesUpload]);
+    Promise.all(imagePromises).then((newImages) => {
+      // Append new images to existing ones instead of replacing
+      onImagesUpload([...existingImages, ...newImages]);
+    });
+  }, [onImagesUpload, existingImages]);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Upload Images</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Upload Images</h2>
+        {existingImages.length > 0 && (
+          <span className="text-sm text-gray-500">
+            {existingImages.length} uploaded
+          </span>
+        )}
+      </div>
       
       <div
         className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors"
@@ -97,6 +114,7 @@ export function ImageUpload({ onImagesUpload }: ImageUploadProps) {
             </p>
             <p className="text-xs text-gray-400 mt-1">
               PNG, JPG, GIF up to 10MB each
+              {existingImages.length > 0 && ' • Add more images to your collection'}
             </p>
           </div>
         </div>

@@ -6,6 +6,7 @@ A modern, client-only Next.js application for creating beautiful image collages 
 
 ### Core Functionality
 - **Multi-Image Upload**: Load multiple images from local files via drag & drop or file browser
+- **Image Reordering**: Freely rearrange images within frames using drag & drop or keyboard shortcuts
 - **Multiple Layout Options**: Create collages in various arrangements:
   - 1×2 (Side by Side)
   - 2×1 (Top & Bottom)  
@@ -81,9 +82,22 @@ pnpm start
 ## 🎨 Usage
 
 1. **Upload Images**: Drag and drop images or click "browse" to select files
-2. **Choose Layout**: Select from 5 available collage layouts
-3. **Adjust Frame**: Set your desired width and aspect ratio
-4. **Export**: Choose format (JPG/PNG) and quality, then download
+2. **Reorder Images**: 
+   - **Drag & Drop**: Drag image thumbnails to rearrange them
+   - **Keyboard**: Use ← → arrow keys to move images, Delete/Backspace to remove
+   - **Visual Feedback**: See numbered indicators and hover effects
+3. **Choose Layout**: Select from 5 available collage layouts
+4. **Adjust Frame**: Set your desired width and aspect ratio  
+5. **Customize Spacing**: Adjust gaps between images and outer margins
+6. **Export**: Choose format (JPG/PNG) and quality, then download
+
+### Image Management Features
+
+- **Add More Images**: Upload additional images that append to your collection
+- **Remove Individual Images**: Click the red × button or use keyboard shortcuts
+- **Clear All**: Remove all images at once with the "Clear All" button
+- **Excess Image Handling**: Visual warnings when you have more images than layout slots
+- **Real-time Preview**: See your collage update instantly as you reorder images
 
 ## 🏗️ Project Structure
 
@@ -97,6 +111,10 @@ src/
 │   ├── CollageApp.tsx   # Main application component
 │   ├── CollageCanvas.tsx # Canvas rendering component
 │   ├── ExportControls.tsx # Export settings
+│   ├── FrameSettings.tsx # Frame customization
+│   ├── ImageReorder.tsx # Image reordering interface
+│   ├── ImageUpload.tsx  # File upload handling
+│   └── LayoutSelector.tsx # Layout selection
 │   ├── FrameSettings.tsx  # Frame customization
 │   ├── ImageUpload.tsx    # File upload component
 │   └── LayoutSelector.tsx # Layout selection
