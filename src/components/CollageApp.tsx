@@ -79,7 +79,7 @@ export function CollageApp() {
         </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Control Panel */}
+          {/* Upload and Layout Controls - Always first on mobile */}
           <div className="lg:col-span-1 space-y-6 order-1 lg:order-1">
             <ImageUpload 
               onImagesUpload={handleImagesUpload}
@@ -99,6 +99,54 @@ export function CollageApp() {
               onLayoutChange={setSelectedLayout}
             />
             
+            {/* Frame Settings - hidden on mobile, shown after canvas */}
+            <div className="hidden lg:block">
+              <FrameSettings
+                frameWidth={frameWidth}
+                aspectRatio={aspectRatio}
+                spacing={spacing}
+                onFrameWidthChange={setFrameWidth}
+                onAspectRatioChange={setAspectRatio}
+                onSpacingChange={setSpacing}
+              />
+            </div>
+
+            {/* Image Adjustment Panel - hidden on mobile, shown after canvas */}
+            <div className="hidden lg:block">
+              {images.length > 0 && (
+                <ImageAdjustmentPanel
+                  images={images}
+                  onResetAdjustment={handleResetAdjustment}
+                />
+              )}
+            </div>
+            
+            {/* Export Controls - shown here on desktop */}
+            <div className="hidden lg:block">
+              <ExportControls
+                quality={exportQuality}
+                onQualityChange={setExportQuality}
+                onExport={handleExport}
+                disabled={images.length === 0}
+              />
+            </div>
+          </div>
+
+          {/* Canvas Area - Second on mobile (after upload/layout), second on desktop */}
+          <div className="lg:col-span-2 order-2 lg:order-2">
+            <CollageCanvas
+              ref={canvasRef}
+              images={images}
+              layout={selectedLayout}
+              frameWidth={frameWidth}
+              aspectRatio={aspectRatio}
+              spacing={spacing}
+              onImageAdjustmentChange={handleImageAdjustmentChange}
+            />
+          </div>
+
+          {/* Frame Settings - shown here on mobile, after canvas */}
+          <div className="lg:hidden order-3 space-y-6">
             <FrameSettings
               frameWidth={frameWidth}
               aspectRatio={aspectRatio}
@@ -115,32 +163,6 @@ export function CollageApp() {
               />
             )}
             
-            {/* Export Controls - shown here on desktop */}
-            <div className="hidden lg:block">
-              <ExportControls
-                quality={exportQuality}
-                onQualityChange={setExportQuality}
-                onExport={handleExport}
-                disabled={images.length === 0}
-              />
-            </div>
-          </div>
-
-          {/* Canvas Area */}
-          <div className="lg:col-span-2 order-2 lg:order-2">
-            <CollageCanvas
-              ref={canvasRef}
-              images={images}
-              layout={selectedLayout}
-              frameWidth={frameWidth}
-              aspectRatio={aspectRatio}
-              spacing={spacing}
-              onImageAdjustmentChange={handleImageAdjustmentChange}
-            />
-          </div>
-
-          {/* Export Controls - shown here on mobile, after canvas */}
-          <div className="lg:hidden order-3">
             <ExportControls
               quality={exportQuality}
               onQualityChange={setExportQuality}
