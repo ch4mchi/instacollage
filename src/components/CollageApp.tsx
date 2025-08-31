@@ -12,11 +12,11 @@ import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONF
 
 export function CollageApp() {
   const [images, setImages] = useState<UploadedImage[]>([]);
-  const [selectedLayout, setSelectedLayout] = useState<CollageLayout>('2x2');
+  const [selectedLayout, setSelectedLayout] = useState<CollageLayout>('2x1');
   const [frameWidth, setFrameWidth] = useState<number>(800);
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('4:3');
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('3:4');
   const [exportQuality, setExportQuality] = useState<number>(90);
-  const [spacing, setSpacing] = useState<SpacingSettings>({ gap: 10, margin: 20 });
+  const [spacing, setSpacing] = useState<SpacingSettings>({ gap: 10, margin: 10 });
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
