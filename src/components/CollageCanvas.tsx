@@ -50,22 +50,24 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
             const x = col * cellWidth;
             const y = row * cellHeight;
 
-            // Calculate scaling to fit the cell while maintaining aspect ratio
+            // Calculate scaling to cover the cell while maintaining aspect ratio
             const imgAspectRatio = img.width / img.height;
             const cellAspectRatio = cellWidth / cellHeight;
 
-            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+            let drawWidth, drawHeight, sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
 
             if (imgAspectRatio > cellAspectRatio) {
-              // Image is wider than cell
-              drawHeight = cellHeight;
-              drawWidth = drawHeight * imgAspectRatio;
-              offsetX = (cellWidth - drawWidth) / 2;
-            } else {
-              // Image is taller than cell
+              // Image is wider than cell - crop horizontally
               drawWidth = cellWidth;
-              drawHeight = drawWidth / imgAspectRatio;
-              offsetY = (cellHeight - drawHeight) / 2;
+              drawHeight = cellHeight;
+              sourceWidth = img.height * cellAspectRatio;
+              sourceX = (img.width - sourceWidth) / 2;
+            } else {
+              // Image is taller than cell - crop vertically
+              drawWidth = cellWidth;
+              drawHeight = cellHeight;
+              sourceHeight = img.width / cellAspectRatio;
+              sourceY = (img.height - sourceHeight) / 2;
             }
 
             // Clip to cell boundaries
@@ -73,8 +75,12 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
             ctx.rect(x, y, cellWidth, cellHeight);
             ctx.clip();
 
-            // Draw image
-            ctx.drawImage(img, x + offsetX, y + offsetY, drawWidth, drawHeight);
+            // Draw image using source rectangle for proper cropping
+            ctx.drawImage(
+              img,
+              sourceX, sourceY, sourceWidth, sourceHeight, // Source rectangle
+              x, y, drawWidth, drawHeight // Destination rectangle
+            );
             ctx.restore();
 
             // Draw border
