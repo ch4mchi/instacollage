@@ -9,6 +9,7 @@ interface LayoutSelectorProps {
 }
 
 const LAYOUT_DESCRIPTIONS: Record<CollageLayout, string> = {
+  '1x1': '1×1 (Single Image)',
   '1x2': '1×2 (Side by Side)',
   '2x1': '2×1 (Top & Bottom)',
   '2x2': '2×2 (Four Square)',

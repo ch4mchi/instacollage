@@ -6,7 +6,7 @@ export interface UploadedImage {
   size: number;
 }
 
-export type CollageLayout = '1x2' | '2x1' | '2x2' | '3x1' | '1x3';
+export type CollageLayout = '1x1' | '1x2' | '2x1' | '2x2' | '3x1' | '1x3';
 
 export type AspectRatio = '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '16:9' | '9:16';
 
@@ -24,6 +24,7 @@ export interface SpacingSettings {
 }
 
 export const LAYOUT_CONFIGS: Record<CollageLayout, LayoutDimensions> = {
+  '1x1': { rows: 1, cols: 1, cells: 1 },
   '1x2': { rows: 1, cols: 2, cells: 2 },
   '2x1': { rows: 2, cols: 1, cells: 2 },
   '2x2': { rows: 2, cols: 2, cells: 4 },
