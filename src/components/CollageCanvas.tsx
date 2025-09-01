@@ -240,11 +240,7 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
             ctx.setLineDash([]);
           }
 
-          // Draw placeholder text
-          ctx.fillStyle = '#9ca3af';
-          ctx.font = '16px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('Drop image here', x + cellWidth / 2, y + cellHeight / 2);
+          // No placeholder text needed
         }
       }
 
