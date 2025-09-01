@@ -47,7 +47,7 @@ export function FrameSettings({
               type="range"
               min="400"
               max="2000"
-              step="50"
+              step="10"
               value={frameWidth}
               onChange={(e) => onFrameWidthChange(Number(e.target.value))}
               className="flex-grow"
@@ -56,7 +56,7 @@ export function FrameSettings({
               type="number"
               min="400"
               max="2000"
-              step="50"
+              step="10"
               value={frameWidth}
               onChange={(e) => onFrameWidthChange(Number(e.target.value))}
               className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
@@ -65,6 +65,12 @@ export function FrameSettings({
           <div className="text-xs text-gray-500 mt-1">
             Range: 400px - 2000px
           </div>
+          <button
+            onClick={() => onFrameWidthChange(1080)}
+            className="mt-2 px-3 py-1 text-sm bg-pink-500 text-white rounded hover:bg-pink-600 transition-colors"
+          >
+            Fit Instagram
+          </button>
         </div>
 
         {/* Aspect Ratio */}
