@@ -13,7 +13,7 @@ export interface UploadedImage {
   adjustment?: ImageAdjustment;
 }
 
-export type CollageLayout = '1x1' | '1x2' | '2x1' | '2x2' | '3x1' | '1x3';
+export type CollageLayout = '1x1' | '1x2' | '2x1' | '2x2' | '3x1' | '1x3' | '3x4';
 
 export type AspectRatio = '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '16:9' | '9:16';
 
@@ -37,6 +37,7 @@ export const LAYOUT_CONFIGS: Record<CollageLayout, LayoutDimensions> = {
   '2x2': { rows: 2, cols: 2, cells: 4 },
   '3x1': { rows: 3, cols: 1, cells: 3 },
   '1x3': { rows: 1, cols: 3, cells: 3 },
+  '3x4': { rows: 3, cols: 4, cells: 12 },
 };
 
 export const ASPECT_RATIOS: Record<AspectRatio, number> = {

@@ -15,6 +15,7 @@ const LAYOUT_DESCRIPTIONS: Record<CollageLayout, string> = {
   '2x2': '2×2 (Four Square)',
   '3x1': '3×1 (Triple Stack)',
   '1x3': '1×3 (Triple Row)',
+  '3x4': '3×4 (12 Images)',
 };
 
 export function LayoutSelector({ selectedLayout, onLayoutChange }: LayoutSelectorProps) {
