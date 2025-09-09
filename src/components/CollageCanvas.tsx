@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
-import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS, ASPECT_RATIOS, ImageAdjustment } from '@/types/collage';
+import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, getLayoutDimensions, ASPECT_RATIOS, ImageAdjustment, CustomLayout } from '@/types/collage';
 
 interface CollageCanvasProps {
   images: UploadedImage[];
   layout: CollageLayout;
+  customLayout?: CustomLayout;
   frameWidth: number;
   aspectRatio: AspectRatio;
   spacing: SpacingSettings;
@@ -13,7 +14,7 @@ interface CollageCanvasProps {
 }
 
 export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
-  ({ images, layout, frameWidth, aspectRatio, spacing, onImageAdjustmentChange }, ref) => {
+  ({ images, layout, customLayout, frameWidth, aspectRatio, spacing, onImageAdjustmentChange }, ref) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragImageIndex, setDragImageIndex] = useState<number | null>(null);

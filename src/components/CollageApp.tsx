@@ -8,11 +8,12 @@ import { FrameSettings } from './FrameSettings';
 import { CollageCanvas } from './CollageCanvas';
 import { ExportControls } from './ExportControls';
 import { ImageAdjustmentPanel } from './ImageAdjustmentPanel';
-import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, LAYOUT_CONFIGS, ImageAdjustment } from '@/types/collage';
+import { UploadedImage, CollageLayout, AspectRatio, SpacingSettings, getLayoutDimensions, ImageAdjustment, CustomLayout } from '@/types/collage';
 
 export function CollageApp() {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [selectedLayout, setSelectedLayout] = useState<CollageLayout>('2x1');
+  const [customLayout, setCustomLayout] = useState<CustomLayout>({ rows: 2, cols: 2 });
   const [frameWidth, setFrameWidth] = useState<number>(1080);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('3:4');
   const [exportQuality, setExportQuality] = useState<number>(90);
@@ -48,7 +49,7 @@ export function CollageApp() {
     );
   }, []);
 
-  const maxImagesForLayout = LAYOUT_CONFIGS[selectedLayout].cells;
+  const maxImagesForLayout = getLayoutDimensions(selectedLayout, customLayout).cells;
 
   const handleExport = useCallback(() => {
     if (!canvasRef.current) return;
@@ -96,7 +97,9 @@ export function CollageApp() {
             
             <LayoutSelector
               selectedLayout={selectedLayout}
+              customLayout={customLayout}
               onLayoutChange={setSelectedLayout}
+              onCustomLayoutChange={setCustomLayout}
             />
             
             {/* Frame Settings - hidden on mobile, shown after canvas */}
@@ -138,6 +141,7 @@ export function CollageApp() {
               ref={canvasRef}
               images={images}
               layout={selectedLayout}
+              customLayout={customLayout}
               frameWidth={frameWidth}
               aspectRatio={aspectRatio}
               spacing={spacing}
