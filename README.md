@@ -7,12 +7,18 @@ A modern, client-only Next.js application for creating beautiful image collages 
 ### Core Functionality
 - **Multi-Image Upload**: Load multiple images from local files via drag & drop or file browser
 - **Image Reordering**: Freely rearrange images within frames using drag & drop or keyboard shortcuts
+- **Interactive Photo Adjustment**: Fine-tune each photo's position and zoom within its frame
+  - **Drag to Reposition**: Click and drag photos to adjust their placement
+  - **Scroll to Zoom**: Use mouse wheel to zoom in/out while maintaining frame coverage
+  - **Visual Feedback**: Hover effects and instruction overlay guide adjustments
 - **Multiple Layout Options**: Create collages in various arrangements:
+  - 1×1 (Single Image)
   - 1×2 (Side by Side)
   - 2×1 (Top & Bottom)  
   - 2×2 (Four Square)
   - 3×1 (Triple Stack)
   - 1×3 (Triple Row)
+  - 3×4 (Twelve Grid)
 
 ### Frame Customization
 - **Adjustable Frame Size**: Set horizontal pixel size from 400px to 2000px
@@ -128,18 +134,27 @@ pnpm run export
    - **Drag & Drop**: Drag image thumbnails to rearrange them
    - **Keyboard**: Use ← → arrow keys to move images, Delete/Backspace to remove
    - **Visual Feedback**: See numbered indicators and hover effects
-3. **Choose Layout**: Select from 5 available collage layouts
-4. **Adjust Frame**: Set your desired width and aspect ratio  
-5. **Customize Spacing**: Adjust gaps between images and outer margins
-6. **Export**: Choose format (JPG/PNG) and quality, then download
+3. **Adjust Individual Photos**: Fine-tune each photo in the preview:
+   - **Reposition**: Click and drag any photo to adjust its placement within the frame
+   - **Zoom**: Use mouse wheel while hovering over a photo to zoom in/out
+   - **Visual Cues**: Blue overlay indicates interactive photos, instruction banner provides guidance
+   - **Monitor Changes**: Check the adjustment panel to see current position and zoom values
+4. **Choose Layout**: Select from 7 available collage layouts
+5. **Adjust Frame**: Set your desired width and aspect ratio  
+6. **Customize Spacing**: Adjust gaps between images and outer margins
+7. **Export**: Choose format (JPG/PNG) and quality, then download
 
 ### Image Management Features
 
 - **Add More Images**: Upload additional images that append to your collection
 - **Remove Individual Images**: Click the red × button or use keyboard shortcuts
 - **Clear All**: Remove all images at once with the "Clear All" button
+- **Interactive Photo Adjustment**: Fine-tune individual photos within their frames
+  - **Smart Constraints**: Photos maintain coverage while allowing repositioning and zooming
+  - **Real-time Feedback**: See adjustments immediately in the preview
+  - **Adjustment Tracking**: Monitor which photos have been modified with current values
 - **Excess Image Handling**: Visual warnings when you have more images than layout slots
-- **Real-time Preview**: See your collage update instantly as you reorder images
+- **Real-time Preview**: See your collage update instantly as you make changes
 
 ## 🏗️ Project Structure
 
@@ -154,11 +169,10 @@ src/
 │   ├── CollageCanvas.tsx # Canvas rendering component
 │   ├── ExportControls.tsx # Export settings
 │   ├── FrameSettings.tsx # Frame customization
+│   ├── ImageAdjustment.tsx # Individual image adjustment controls
+│   ├── ImageAdjustmentPanel.tsx # Adjustment status panel
 │   ├── ImageReorder.tsx # Image reordering interface
 │   ├── ImageUpload.tsx  # File upload handling
-│   └── LayoutSelector.tsx # Layout selection
-│   ├── FrameSettings.tsx  # Frame customization
-│   ├── ImageUpload.tsx    # File upload component
 │   └── LayoutSelector.tsx # Layout selection
 └── types/               # TypeScript type definitions
     └── collage.ts       # Application types
@@ -178,8 +192,10 @@ src/
 
 ### Performance Optimized
 - Canvas-based rendering for smooth performance
+- Interactive photo adjustments with real-time updates
 - Efficient image scaling and positioning
 - Memory-conscious file handling
+- Smart constraint system for optimal user experience
 
 ## 🔧 Customization
 
