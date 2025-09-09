@@ -40,7 +40,7 @@ export const CollageCanvas = forwardRef<HTMLCanvasElement, CollageCanvasProps>(
     useImperativeHandle(ref, () => canvasRef.current!);
 
     const frameHeight = frameWidth / ASPECT_RATIOS[aspectRatio];
-    const config = LAYOUT_CONFIGS[layout];
+    const config = getLayoutDimensions(layout, customLayout);
 
     // Utility function to calculate distance between two touches
     const getTouchDistance = useCallback((touch1: React.Touch, touch2: React.Touch) => {
